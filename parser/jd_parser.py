@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # 示例：使用本地 LLM 客户端
     from utils.llm_client import LLMClient
 
-    llm = LLMClient(base_url="http://localhost:11434/api/generate", model_name="llama3.2:3b")
+    llm = LLMClient(base_url="http://localhost:11434/api/generate", model_name="gemma3:12b")
     parser = JDParser(llm)
 
     # 示例 URL

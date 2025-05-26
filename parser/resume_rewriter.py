@@ -1,3 +1,5 @@
+from loguru import logger
+
 class ResumeRewriter:
     def __init__(self, llm):
         self.llm = llm
@@ -13,6 +15,8 @@ class ResumeRewriter:
             \"\"\"{section_text}\"\"\"
             请以精炼、有力、岗位契合度高的风格输出改写后的内容。
             """
+        logger.info(f"Rewriting section '{section_title}' with LLM...")
+    
         return self.llm(prompt)
 
     def rewrite_resume(self, sections: dict, jd_text: str) -> dict:

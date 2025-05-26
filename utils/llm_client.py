@@ -4,6 +4,8 @@ from langchain_core.language_models import BaseLLM
 from langchain_core.outputs import Generation, LLMResult
 from typing import Any, List, Optional, Dict
 from pydantic import Field
+from loguru import logger
+
 
 class LLMWrapper(BaseLLM):
     client: Any = Field(exclude=True)
@@ -25,6 +27,8 @@ class LLMWrapper(BaseLLM):
         返回：
             LLM 生成的字符串。
         """
+
+        logger.info(f"Calling local LLM with prompt: {prompt[:50]}...")
         return self.client(prompt)
 
     @property
@@ -37,7 +41,7 @@ class LLMWrapper(BaseLLM):
         prompts: List[str],
         stop: Optional[List[str]] = None,
         run_manager: Optional[Any] = None,
-        **kwargs
+        **kwargs,
     ) -> LLMResult:
         """
         批量生成文本（Agent 使用）
@@ -47,7 +51,12 @@ class LLMWrapper(BaseLLM):
 
 
 class LLMClient:
-    def __init__(self, base_url="http://localhost:11434/api/generate", model_name="llama3.2:3b", timeout=60):
+    def __init__(
+        self,
+        base_url="http://localhost:11434/api/generate",
+        model_name="llama3.2:3b",
+        timeout=60,
+    ):
         """
         初始化本地 LLM 客户端。
 
@@ -59,7 +68,7 @@ class LLMClient:
         self.base_url = base_url
         self.model_name = model_name
         self.timeout = timeout
-        
+        logger.info(f"Initialized {model_name} on {base_url}")
 
     def __call__(self, prompt: str) -> str:
         """
@@ -71,8 +80,8 @@ class LLMClient:
         返回：
             LLM 生成的字符串或错误信息。
         """
+        logger.info(f"Calling: {prompt[:50]}")
         return self.generate(prompt)
-
 
     def generate(self, prompt: str) -> str:
         """
@@ -85,9 +94,14 @@ class LLMClient:
             LLM 生成的字符串或错误信息。
         """
         try:
+            logger.info(f"Prompt Length: {len(prompt)}")
             res = requests.post(
                 self.base_url,
-                json={"model": self.model_name, "prompt": prompt, "stream": False},
+                json={
+                    "model": self.model_name,
+                    "prompt": prompt,
+                    "stream": False,
+                },
                 timeout=self.timeout,
             )
             return res.json().get("response", "⚠️ Model did not return a result.")
