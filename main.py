@@ -1,7 +1,6 @@
 from paddleocr import PaddleOCR
 import streamlit as st
 
-from parser.resume_parser import ResumeParser
 from parser.jd_parser import JDParser
 from utils.ocr_utils import OCRUtils
 from utils.llm_client import LLMClient
@@ -13,14 +12,46 @@ from utils.llm_client import LLMWrapper, LLMClient
 from parser.resume_rewriter import ResumeRewriter
 
 from config import Config
-from loguru import logger
 
+from streamlit_option_menu import option_menu
+from streamlit_card import card
+
+from components.analysis_module import analysis_card
+from components.polish_module import polish_card
+from components.agent_module import agent_card
+from components.score_module import analyze_resume_with_scores
+from components.compare_module import compare_resume_sections
+
+from utils.session_utils import SessionUtils
+
+from utils.i18n import LANGUAGES
 
 CONFIG = Config().config
 
+
+st.set_page_config(
+    page_title="RESUMIX",
+    page_icon="📄",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+
+if "lang" not in st.session_state:
+    st.session_state.lang = "en"
+
+
+T = LANGUAGES[st.session_state.lang]
+
+# card(
+#     title=T["title"],
+#     text="test",
+#     image="assets/logo.png",
+#     url="www.resumix.com",
+# )
+
+
 llm_model = LLMClient(base_url=CONFIG.LLM.URL, model_name=CONFIG.LLM.MODEL)
-ocr_model = PaddleOCR(use_angle_cls=True, lang="ch")
-ocr = OCRUtils(ocr_model, dpi=150, keep_images=False)
 agent = initialize_agent(
     tools=tool_list,
     llm=LLMWrapper(client=llm_model),
@@ -31,113 +62,85 @@ agent = initialize_agent(
 )
 
 rewriter = ResumeRewriter(llm_model)
-# Streamlit UI
-
-st.set_page_config(
-    page_title="RESUMIX",
-    page_icon="📄",
-    layout="centered",
-    initial_sidebar_state="expanded",
-)
-
-st.title("RESUMIX")
 
 
-# ========== 公共函数 ==========
-@st.cache_data
-def extract_text_from_pdf(file):
-    return ocr.extract_text(file, max_pages=1)
-
-
-def display_job_description(jd_url, llm_model):
-    jd_parser = JDParser(llm_model)
-    jd_content = jd_parser.parse_from_url(jd_url)
-    st.chat_message("Job Description").write(jd_content)
-    return jd_content
-
-
-# ========== 各 Tab 功能模块 ==========
-def handle_analyze(text):
-    st.header("📄 Resume Analysis")
-    parser = ResumeParser()
-    sections = parser.parse_resume(text)
-    for section, content in sections.items():
-        st.subheader(section.upper())
-        st.chat_message("Resumix").write(content)
-
-
-def handle_polish(text, llm_model):
-    st.header("✨ Resume Polishing")
-    parser = ResumeParser()
-    sections = parser.parse_resume(text)
-    for section, content in sections.items():
-        prompt = f"Please recommend improvements for the following resume section:\n\n{content}"
-        result = llm_model(prompt)
-        st.chat_message("Resumix").write(result)
-
-
-def handle_agent(text, jd_content, agent):
-    st.header("🤖 AI Agent")
-    parser = ResumeParser()
-    sections = parser.parse_resume(text)
-    for section, content in sections.items():
-        prompt = f"""你是一个简历优化助手。请参考以下岗位描述，并优化简历内容：
-
-            岗位描述：{jd_content}
-
-            简历原文：
-\"\"\"{content}\"\"\"
-
-请按照如下格式作答：
-Thought: ...
-Action: local_llm_generate
-Action Input: \"\"\"优化后的内容\"\"\"
-"""
-        result = agent.run(prompt)
-        st.chat_message("Resumix").write(result)
-
+col1, col2 = st.columns([1, 3])
+with col1:
+    st.image("assets/logo.png", width=60)
+    pass
+with col2:
+    st.title(T["title"])
 
 # ========== 页面主入口 ==========
-tab1, tab2, tab3 = st.tabs(["简历解析", "推荐优化", "智能代理"])
-with st.sidebar:
-    with st.expander("📎 Upload Resume", expanded=True):
-        uploaded_file = st.file_uploader("Upload Resume", type=["pdf"])
+tab_names = T["tabs"]
 
-    with st.expander("💼 Job Description", expanded=True):
+tab = option_menu(
+    menu_title=None,
+    options=tab_names,
+    icons=[
+        "file-text",
+        "pencil",
+        "robot",
+        "bar-chart",
+        "file-earmark-break",
+    ],
+    orientation="horizontal",
+)
+
+
+uploaded_file = None
+with st.sidebar:
+
+    with st.expander(T["upload_resume"], expanded=True):
+        uploaded_file = st.file_uploader(T["upload_resume_title"], type=["pdf"])
+        SessionUtils.upload_resume_file(uploaded_file)
+
+    with st.expander(T["job_description"], expanded=True):
         jd_url = st.text_input(
-            "JD Link (URL)", placeholder="https://example.com/job-description"
+            T["job_description_title"],
+            placeholder="https://example.com/job-description",
         )
 
-    with st.expander("🔐 User Login"):
+    with st.expander(T["user_login"], expanded=False):
         if not st.session_state.get("authenticated"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
-            if st.button("Login"):
+            if st.button(T["login_button"]):
                 if username == "admin" and password == "123456":
                     st.session_state.authenticated = True
-                    st.success("Login Success")
+                    st.success(T["login_success"])
         else:
-            st.success("Logged in")
-            if st.button("Logout"):
+            st.success(T["logged_in"])
+            if st.button(T["logout"]):
                 st.session_state.authenticated = False
 
+    with st.expander(T["language"], expanded=False):
+        selected_lang = st.selectbox(
+            "Global",
+            ["en", "zh"],
+            index=["en", "zh"].index(st.session_state.lang),
+        )
+        if selected_lang != st.session_state.lang:
+            st.session_state.lang = selected_lang
+            st.rerun()  # 切换语言后刷新页面
 
 if uploaded_file:
-    text = extract_text_from_pdf(uploaded_file)
 
-    with tab1:
-        handle_analyze(text)
+    if "resume_text" not in st.session_state:
+        st.session_state.resume_text = SessionUtils.get_resume_text()
+    text = st.session_state.resume_text
 
-    with tab2:
-        handle_polish(text, llm_model)
-
-    with tab3:
-        if jd_url:
-            jd_content = display_job_description(jd_url, llm_model)
-            handle_agent(text, jd_content, agent)
-        else:
-            st.warning(
-                "Please provide a job description URL to use the AI Agent feature."
-            )
+    if tab == tab_names[0]:
+        analysis_card(text)
+    elif tab == tab_names[1]:
+        polish_card(text, llm_model)
+    elif tab == tab_names[2]:
+        agent_card(text)
+    elif tab == tab_names[3]:
+        jd_content = SessionUtils.get_job_description_content()
+        analyze_resume_with_scores(text, jd_content, llm_model)
+    elif tab == tab_names[4]:
+        jd_content = SessionUtils.get_job_description_content()
+        compare_resume_sections(text, jd_content, rewriter, method="llm")
 else:
-    st.info("Please upload a resume PDF file to get started.")
+    st.info(T["please_upload"])

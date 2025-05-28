@@ -2,6 +2,7 @@ import fitz  # PyMuPDF
 import tempfile
 import os
 
+
 class OCRUtils:
     def __init__(self, ocr_model, dpi: int = 150, keep_images: bool = False):
         """
@@ -28,7 +29,12 @@ class OCRUtils:
             提取的纯文本内容。
         """
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
-            temp_file.write(pdf_file.read())
+
+            content = pdf_file.read()
+            if not content:
+                raise ValueError("上传的 PDF 文件内容为空。")
+
+            temp_file.write(content)
             temp_pdf_path = temp_file.name
 
         doc = fitz.open(temp_pdf_path)
