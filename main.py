@@ -1,6 +1,8 @@
 ## from paddleocr import PaddleOCR
 import streamlit as st
 
+from pathlib import Path
+
 from parser.jd_parser import JDParser
 from utils.ocr_utils import OCRUtils
 from utils.llm_client import LLMClient
@@ -27,6 +29,9 @@ from utils.session_utils import SessionUtils
 from utils.i18n import LANGUAGES
 
 CONFIG = Config().config
+
+CURRENT_DIR = Path(__file__).resolve().parent
+ASSET_DIR = CURRENT_DIR / "assets" / "logo.png"
 
 
 st.set_page_config(
@@ -66,7 +71,7 @@ rewriter = ResumeRewriter(llm_model)
 
 col1, col2 = st.columns([1, 3])
 with col1:
-    st.image("E:\\Python_Ground\\CVGen\\resumix\\assets\\logo.png", width=60)
+    st.image(ASSET_DIR, width=60)
     pass
 with col2:
     st.title(T["title"])

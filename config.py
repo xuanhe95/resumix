@@ -2,6 +2,7 @@
 import yaml
 from types import SimpleNamespace
 from threading import Lock
+from pathlib import Path
 
 def dict_to_namespace(d):
     if isinstance(d, dict):
@@ -15,7 +16,12 @@ class Config:
     _instance = None
     _lock = Lock()  # 保证线程安全
 
-    def __new__(cls, path="E:\\Python_Ground\\CVGen\\resumix\\config.yaml"):
+    def __new__(cls, path=None):
+        
+        if path is None:
+            base_dir = Path(__file__).resolve().parent
+            path = base_dir / "config.yaml"
+        
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
