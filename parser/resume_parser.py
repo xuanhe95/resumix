@@ -4,23 +4,45 @@ from typing import Dict, List
 from section.project_section import ProjectSection
 from section.resume_section import ResumeSection
 
+
 class ResumeParser:
     """简历解析器：将OCR文本转换为结构化的简历模块"""
-    
+
     def __init__(self):
         # 标题映射：标准模块名 -> 多语言关键词变体
         self.SECTION_TITLES = {
-        "personal_info": ["personal information", "contact", "基本信息", "联系方式"],
-        "education": ["education", "education background", "academic history", "学历", "教育经历","教育背景"],
-        "experience": ["work experience", "experience", "职业经历", "工作经历", "实习经历"],
-        "projects": ["projects", "project experience", "项目", "项目经历"],
-        "skills": ["skills", "technical skills", "技能", "技术"],
-        "certifications": ["certifications", "certificates", "证书"],
-        "languages": ["languages", "语言能力", "语言"]
-    }
+            "personal_info": [
+                "personal information",
+                "contact",
+                "基本信息",
+                "联系方式",
+            ],
+            "education": [
+                "education",
+                "education background",
+                "academic history",
+                "学历",
+                "教育经历",
+                "教育背景",
+            ],
+            "experience": [
+                "work experience",
+                "experience",
+                "职业经历",
+                "工作经历",
+                "实习经历",
+            ],
+            "projects": ["projects", "project experience", "项目", "项目经历"],
+            "skills": ["skills", "technical skills", "技能", "技术"],
+            "certifications": ["certifications", "certificates", "证书"],
+            "languages": ["languages", "语言能力", "语言"],
+        }
 
     def normalize_text(self, text: str) -> List[str]:
         """去除空行、首尾空格，按行分段"""
+        if text is None or not text.strip():
+            return []
+
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         return lines
 
@@ -48,8 +70,7 @@ class ResumeParser:
         """主接口函数：将OCR简历文本结构化为模块字典"""
         lines = self.normalize_text(ocr_text)
         sections = self.detect_sections(lines)
-        
-        
+
         return sections
 
 
@@ -70,18 +91,18 @@ if __name__ == "__main__":
     技能
     Python, PyTorch, Docker
     """
-    
+
     parser = ResumeParser()
 
     structured = parser.parse_resume(sample_text)
     print(len(structured))
     for section, content in structured.items():
-        
+
         section = ResumeSection(name=section, raw_text=content)
         print(section.to_markdown())
-        
+
         # if section == "projects":
         #     project_section = ProjectSection(name=section, raw_text=content)
         #     print(project_section.to_markdown())
-        
-        #print(f"\n== {section.upper()} ==\n{content}")
+
+        # print(f"\n== {section.upper()} ==\n{content}")

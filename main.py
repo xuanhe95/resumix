@@ -1,4 +1,4 @@
-## from paddleocr import PaddleOCR
+from paddleocr import PaddleOCR
 import streamlit as st
 
 from pathlib import Path
