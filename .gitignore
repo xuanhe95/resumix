@@ -1,1 +1,17 @@
 venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Cython build
+*.c
+*.so
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# VSCode 或 PyCharm 等 IDE 项目文件（可选）
+.vscode/
+.idea/
