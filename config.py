@@ -15,7 +15,7 @@ class Config:
     _instance = None
     _lock = Lock()  # 保证线程安全
 
-    def __new__(cls, path="config.yaml"):
+    def __new__(cls, path="E:\\Python_Ground\\CVGen\\resumix\\config.yaml"):
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:

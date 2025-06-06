@@ -1,14 +1,12 @@
 from utils.ocr_utils import OCRUtils
 import streamlit as st
 from parser.jd_parser import JDParser
-from paddleocr import PaddleOCR
+## from paddleocr import PaddleOCR
 
 
 @st.cache_data(show_spinner="正在提取简历文本...")
 def extract_text_from_pdf(file):
-    ocr_model = PaddleOCR(use_angle_cls=True, lang="ch")
-    ocr = OCRUtils(ocr_model, dpi=150, keep_images=False)
-    return ocr.extract_text(file, max_pages=1)
+    pass
 
 
 @st.cache_data(show_spinner="正在解析岗位描述...")
