@@ -1,15 +1,29 @@
-# resume_parser.py
+from typing import Dict, List, Union
 import re
-from typing import Dict, List
-from section.project_section import ProjectSection
-from section.resume_section import ResumeSection
+
+from section.education_section import EducationSection
+from section.experience_section import ExperienceSection
+from section.info_section import PersonalInfoSection
+from section.projects_section import ProjectsSection
+from section.skills_section import SkillsSection
+from section.section_base import SectionBase
+
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+SECTIONS = {
+    "personal_info": PersonalInfoSection,
+    "education": EducationSection,
+    "experience": ExperienceSection,
+    "projects": ProjectsSection,
+    "skills": SkillsSection,
+}
 
 
 class ResumeParser:
-    """简历解析器：将OCR文本转换为结构化的简历模块"""
-
     def __init__(self):
-        # 标题映射：标准模块名 -> 多语言关键词变体
         self.SECTION_TITLES = {
             "personal_info": [
                 "personal information",
@@ -34,20 +48,17 @@ class ResumeParser:
             ],
             "projects": ["projects", "project experience", "项目", "项目经历"],
             "skills": ["skills", "technical skills", "技能", "技术"],
-            "certifications": ["certifications", "certificates", "证书"],
-            "languages": ["languages", "语言能力", "语言"],
         }
 
-    def normalize_text(self, text: str) -> List[str]:
-        """去除空行、首尾空格，按行分段"""
-        if text is None or not text.strip():
-            return []
-
-        lines = [line.strip() for line in text.splitlines() if line.strip()]
-        return lines
+    def normalize_text(self, text: str, keep_blank: bool = False) -> List[str]:
+        lines = text.splitlines()
+        return [
+            line.strip() if keep_blank else line.strip()
+            for line in lines
+            if keep_blank or line.strip()
+        ]
 
     def detect_sections(self, lines: List[str]) -> Dict[str, List[str]]:
-        """根据标题识别各模块段落内容"""
         section_map = {}
         current_section = "personal_info"
 
@@ -57,21 +68,34 @@ class ResumeParser:
                 for pattern in variants:
                     if re.match(rf"(?i)^.*{re.escape(pattern)}.*$", line):
                         current_section = tag
-                        print(f"Matched section: {current_section} for line: {line}")
                         matched = True
                         break
                 if matched:
                     break
-            section_map.setdefault(current_section, []).append(line)
+            section_map.setdefault(current_section, []).append(line or "")
 
-        return {k: "\n".join(v) for k, v in section_map.items()}
+        return section_map
 
-    def parse_resume(self, ocr_text: str) -> Dict[str, str]:
-        """主接口函数：将OCR简历文本结构化为模块字典"""
-        lines = self.normalize_text(ocr_text)
-        sections = self.detect_sections(lines)
+    def parse_resume(self, ocr_text: str) -> Dict[str, SectionBase]:
+        lines = self.normalize_text(ocr_text, keep_blank=True)
+        section_lines = self.detect_sections(lines)
 
-        return sections
+        structured_sections = {}
+        for section, line_list in section_lines.items():
+            raw_text = "\n".join(line_list)  # 每个 Section 内部仍使用文本传入
+            cls = SECTIONS.get(section)
+            if cls:
+                section_obj = cls(section, raw_text)
+                section_obj.original_lines = line_list  # ✅ 保留原始行结构，供展示/分析
+                section_obj.parse()
+                structured_sections[section] = section_obj
+            else:
+                fallback = SectionBase(section, raw_text)
+                fallback.original_lines = line_list
+                fallback.parsed_data = {"raw": raw_text}
+                structured_sections[section] = fallback
+
+        return structured_sections
 
 
 if __name__ == "__main__":
@@ -96,13 +120,8 @@ if __name__ == "__main__":
 
     structured = parser.parse_resume(sample_text)
     print(len(structured))
-    for section, content in structured.items():
 
-        section = ResumeSection(name=section, raw_text=content)
-        print(section.to_markdown())
-
-        # if section == "projects":
-        #     project_section = ProjectSection(name=section, raw_text=content)
-        #     print(project_section.to_markdown())
-
-        # print(f"\n== {section.upper()} ==\n{content}")
+    for section, obj in structured.items():
+        print(f"Section: {section}")
+        print(obj.parsed_data)
+        print(type(obj))

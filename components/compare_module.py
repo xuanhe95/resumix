@@ -1,45 +1,48 @@
-import streamlit as st
 from streamlit_option_menu import option_menu
-from parser.resume_parser import ResumeParser
-from utils.logger import logger
+import streamlit as st
+from loguru import logger
+from typing import Dict
+from section.section_base import SectionBase
 from utils.i18n import LANGUAGES
+from parser.resume_rewriter import ResumeRewriter  # 你自己的实现路径
+from components.cards.section_render import SectionRender  # 你自己的实现路径
 
 
-def compare_resume_sections(text, jd_content, rewriter, method="llm"):
-    logger.info("Comparing resume sections with method: {}".format(method))
+def compare_resume_sections(
+    sections: Dict[str, SectionBase],
+    jd_content: str,
+    rewriter: ResumeRewriter,
+):
+    logger.info("Comparing all resume sections using SectionRewriter")
 
     T = LANGUAGES[st.session_state.lang]
-    parser = ResumeParser()
-    sections = parser.parse_resume(text)
-    section_names = list(sections.keys())
 
-    selected_section = option_menu(
-        menu_title=None,
-        options=section_names,
-        icons=None,
-        orientation="horizontal",  # 或 "horizontal"
-    )
+    for section_name, section_obj in sections.items():
+        st.divider()  # 分隔每个模块
 
-    original_text = sections[selected_section]
-    col1, col2 = st.columns(2)
+        # 若未润色过，调用 Rewriter 润色
+        if not getattr(section_obj, "rewritten_text", None):
+            with st.spinner(f"正在润色 [{section_name}] 模块..."):
+                rewriter.rewrite_section(section_obj, jd_content)
 
-    with col1:
-        st.subheader(f"{T['compare']['original']}- {selected_section}")
-        st.code(original_text)
+        col1, col2 = st.columns(2)
 
-    with col2:
-        st.subheader(f"{T['compare']['polished']} - {selected_section}")
-        with st.spinner("正在优化..."):
-            if method == "llm":
-                prompt = (
-                    f"请优化以下简历段落，提高表达清晰度与专业性：\n\n{original_text}"
-                )
-                improved = rewriter.llm(prompt)
-            elif method == "agent":
-                improved = rewriter.rewrite_section(
-                    selected_section, original_text, jd_content
-                )
-            else:
-                improved = "⚠️ 未知优化方式"
+        # 原始内容列
+        with col1:
+            st.markdown(f"#### {T['compare']['original']} - {section_name}")
+            st.chat_message("user").write("以下是简历中的内容：")
+            with st.chat_message("user"):
+                for line in section_obj.original_lines:
+                    st.markdown(
+                        line if line.strip() else "&nbsp;", unsafe_allow_html=True
+                    )
 
-        st.chat_message("Resumix").write(improved)
+        # 润色内容列
+        with col2:
+            st.markdown(f"#### {T['compare']['polished']} - {section_name}")
+            st.chat_message("assistant").write("这是润色后的内容：")
+
+            try:
+                SectionRender().render_section(section_obj)
+            except Exception as e:
+                st.error(f"❌ 渲染出错：{e}")

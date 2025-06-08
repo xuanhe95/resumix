@@ -1,26 +1,29 @@
+from typing import Dict
 from loguru import logger
+from prompt.prompt_dispatcher import PromptDispatcher
+from section.section_base import SectionBase
+
 
 class ResumeRewriter:
     def __init__(self, llm):
-        self.llm = llm
+        self.llm = llm  # callable like: lambda prompt -> str
+        self.dispatcher = PromptDispatcher()
 
-    def rewrite_section(self, section_title: str, section_text: str, jd_text: str) -> str:
-        prompt = f"""
-            你是一个专业的简历优化助手，请根据以下岗位描述，对简历中的 [{section_title}] 部分进行改写，使其内容更贴合岗位需求。
+    def rewrite_section(self, section: SectionBase, jd_text: str = "") -> SectionBase:
+        # 获取针对该 section 的 prompt
+        prompt = self.dispatcher.get_prompt(section)
+        logger.info(f"Rewriting section '{section.name}' with LLM...")
 
-            岗位描述：
-            {jd_text}
+        # 调用 LLM 接口
+        rewritten_text = self.llm(prompt)
 
-            原始简历内容：
-            \"\"\"{section_text}\"\"\"
-            请以精炼、有力、岗位契合度高的风格输出改写后的内容。
-            """
-        logger.info(f"Rewriting section '{section_title}' with LLM...")
-    
-        return self.llm(prompt)
+        # 写入回 section 对象
+        section.rewritten_text = rewritten_text.strip()
 
-    def rewrite_resume(self, sections: dict, jd_text: str) -> dict:
+    def rewrite_all(
+        self, sections: Dict[str, SectionBase], jd_text: str = ""
+    ) -> Dict[str, SectionBase]:
         rewritten = {}
-        for section_title, section_text in sections.items():
-            rewritten[section_title] = self.rewrite_section(section_title, section_text, jd_text)
+        for name, section in sections.items():
+            rewritten[name] = self.rewrite_section(section, jd_text)
         return rewritten

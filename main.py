@@ -1,4 +1,4 @@
-from paddleocr import PaddleOCR
+## from paddleocr import PaddleOCR
 import streamlit as st
 
 from pathlib import Path
@@ -66,7 +66,7 @@ agent = initialize_agent(
     max_iterations=5,
 )
 
-rewriter = ResumeRewriter(llm_model)
+RESUME_REWRITER = ResumeRewriter(llm_model)
 
 
 col1, col2 = st.columns([1, 3])
@@ -133,7 +133,10 @@ if uploaded_file:
 
     if "resume_text" not in st.session_state:
         st.session_state.resume_text = SessionUtils.get_resume_text()
+
     text = st.session_state.resume_text
+
+    STRUCTED_SECTIONS = SessionUtils.get_resume_sections()
 
     if tab == tab_names[0]:
         analysis_card(text)
@@ -143,9 +146,9 @@ if uploaded_file:
         agent_card(text)
     elif tab == tab_names[3]:
         jd_content = SessionUtils.get_job_description_content()
-        analyze_resume_with_scores(text, jd_content, llm_model)
+        analyze_resume_with_scores(STRUCTED_SECTIONS, jd_content, llm_model)
     elif tab == tab_names[4]:
         jd_content = SessionUtils.get_job_description_content()
-        compare_resume_sections(text, jd_content, rewriter, method="llm")
+        compare_resume_sections(STRUCTED_SECTIONS, jd_content, RESUME_REWRITER)
 else:
     st.info(T["please_upload"])

@@ -4,7 +4,7 @@ import os
 
 
 class OCRUtils:
-    def __init__(self, ocr_model, dpi: int = 150, keep_images: bool = False):
+    def __init__(self, ocr_model, dpi: int = 151, keep_images: bool = False):
         """
         初始化 OCR 提取器。
 
@@ -17,7 +17,7 @@ class OCRUtils:
         self.dpi = dpi
         self.keep_images = keep_images
 
-    def extract_text(self, pdf_file, max_pages: int = 1) -> str:
+    def extract_text(self, pdf_file, max_pages: int = 2) -> str:
         """
         从上传的 PDF 文件中提取 OCR 文本。
 
@@ -50,7 +50,8 @@ class OCRUtils:
             page_text = "\n".join(
                 [line[1][0] for block in ocr_result for line in block]
             )
-            full_text += f"\n--- Page {i + 1} ---\n{page_text}"
+
+            full_text += f"\n--- Page {i + 2} ---\n{page_text}"
 
             if not self.keep_images:
                 os.remove(img_path)

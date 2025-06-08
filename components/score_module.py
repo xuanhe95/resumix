@@ -3,6 +3,8 @@ from utils.logger import logger
 from parser.resume_parser import ResumeParser
 from components.cards.score_card import display_score_card
 import re
+from typing import Dict
+from section.section_base import SectionBase
 
 
 def score_resume_section(section_name, content, jd_content, llm_model):
@@ -64,18 +66,20 @@ def score_resume_section(section_name, content, jd_content, llm_model):
     return result
 
 
-def analyze_resume_with_scores(text, jd_content, llm_model):
+def analyze_resume_with_scores(
+    sections: Dict[str, SectionBase], jd_content: str, llm_model
+):
     logger.info("开始简历评分分析...")
-    parser = ResumeParser()
-    sections = parser.parse_resume(text)
 
     total = len(sections)
     progress_bar = st.progress(0)
 
-    for idx, (section, content) in enumerate(sections.items(), start=1):
-        with st.spinner(f"正在评分 {section}..."):
-            scores = score_resume_section(section, content, jd_content, llm_model)
-            display_score_card(section, scores)
+    for idx, section in enumerate(sections.values(), 1):
+        with st.spinner(f"正在评分 {section.name}..."):
+            scores = score_resume_section(
+                section.name, section.raw_text, jd_content, llm_model
+            )
+            display_score_card(section.name, scores)
             st.markdown("---")
 
         progress_bar.progress(idx / total)

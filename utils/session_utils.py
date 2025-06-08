@@ -2,6 +2,7 @@ from utils.ocr_utils import OCRUtils
 import streamlit as st
 from parser.jd_parser import JDParser
 from paddleocr import PaddleOCR
+from parser.resume_parser import ResumeParser
 
 
 @st.cache_data(show_spinner="正在提取简历文本...")
@@ -45,3 +46,21 @@ class SessionUtils:
                     st.session_state.jd_url, st.session_state.llm_model
                 )
         return st.session_state.jd_content
+
+    @staticmethod
+    def get_resume_sections():
+        if "resume_sections" not in st.session_state:
+            text = SessionUtils.get_resume_text()
+            parser = ResumeParser()
+            st.session_state.resume_sections = parser.parse_resume(text)
+        return st.session_state.resume_sections
+
+    @staticmethod
+    def get_section_raw(section_name: str) -> str:
+        sections = SessionUtils.get_resume_sections()
+        return sections.get(section_name).raw_text if section_name in sections else ""
+
+    @staticmethod
+    def get_section_data(section_name: str) -> dict:
+        sections = SessionUtils.get_resume_sections()
+        return sections.get(section_name).to_dict() if section_name in sections else {}
