@@ -39,4 +39,4 @@ EXPOSE 8501
 
 # 启动 Streamlit 应用
 # CMD ["streamlit", "run", "resumix/main.py", "--server.port=8501", "--server.address=0.0.0.0"]
-CMD ["/bin/bash"]
+CMD ["sleep", "infinity"]
