@@ -1,3 +1,0 @@
-llm:
-  model: "gemma3:4b"
-  url: "http://localhost:11434/api/generate"

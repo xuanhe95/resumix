@@ -1,0 +1,15 @@
+llm:
+  model: "gemma3:4b"
+  #url: "http://host.docker.internal:11434/api/generate"
+  url: "http://localhost:11434/api/generate"
+docker_llm:
+  model: "gemma3:4b"
+  url: "http://host.docker.internal:11434/api/generate"
+
+ocr:
+  use_easyocr: True
+  use_paddle: False
+  easyocr:
+    directory: "resumix/models/easyocr"
+    gpu: False
+    
