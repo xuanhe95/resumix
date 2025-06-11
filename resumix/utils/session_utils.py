@@ -3,6 +3,7 @@ import streamlit as st
 from parser.jd_parser import JDParser
 from paddleocr import PaddleOCR
 from parser.resume_parser import ResumeParser
+from section_parser.vector_parser import VectorParser
 from utils.logger import logger
 import easyocr
 
@@ -70,7 +71,7 @@ class SessionUtils:
     def get_resume_sections():
         if "resume_sections" not in st.session_state:
             text = SessionUtils.get_resume_text()
-            parser = ResumeParser()
+            parser = VectorParser()
             st.session_state.resume_sections = parser.parse_resume(text)
         return st.session_state.resume_sections
 
