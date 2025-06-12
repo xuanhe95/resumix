@@ -1,9 +1,19 @@
 ## from paddleocr import PaddleOCR
 import streamlit as st
-
+import sys
+import os
 from pathlib import Path
 
-from parser.jd_parser import JDParser
+import os
+print("当前工作目录:", os.getcwd())
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'parser')))
+
+
+print(sys.path)
+
+
+from job_parser.jd_parser import JDParser
 from utils.ocr_utils import OCRUtils
 from utils.llm_client import LLMClient
 
@@ -11,7 +21,7 @@ from utils.llm_client import LLMClient
 from langchain.agents import initialize_agent, AgentType
 from tool.tool import tool_list
 from utils.llm_client import LLMWrapper, LLMClient
-from parser.resume_rewriter import ResumeRewriter
+from job_parser.resume_rewriter import ResumeRewriter
 
 from config import Config
 

@@ -1,6 +1,6 @@
 import streamlit as st
 from utils.logger import logger
-from parser.resume_parser import ResumeParser
+from job_parser.resume_parser import ResumeParser
 from components.cards.score_card import display_score_card
 import re
 from typing import Dict
