@@ -1,5 +1,5 @@
 import streamlit as st
-from parser.resume_parser import ResumeParser
+from job_parser.resume_parser import ResumeParser
 from utils.logger import logger
 
 

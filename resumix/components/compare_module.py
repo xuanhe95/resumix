@@ -4,7 +4,7 @@ from loguru import logger
 from typing import Dict
 from section.section_base import SectionBase
 from utils.i18n import LANGUAGES
-from parser.resume_rewriter import ResumeRewriter  # 你自己的实现路径
+from job_parser.resume_rewriter import ResumeRewriter  # 你自己的实现路径
 from components.cards.section_render import SectionRender  # 你自己的实现路径
 
 
