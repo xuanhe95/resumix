@@ -1,0 +1,31 @@
+llm:
+  use_model: "silicon"
+  deepseek:
+    model: "deepseek-chat"
+    url: "https://api.deepseek.com/v1/chat/completions"
+  local_llm:
+    model: "gemma3:4b"
+    url: "http://localhost:11434/api/generate"
+  docker_llm:
+    model: "gemma3:4b"
+    url: "http://host.docker.internal:11434/api/generate"
+  teleai:
+    url: "https://www.srdcloud.cn/api/acbackend/openchat/v1/chat/completions"
+  silicon:
+    model: "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B"
+    url: "https://api.siliconflow.cn/v1/chat/completions"
+
+ocr:
+  use_model: "easyocr"
+  easyocr:
+    model: "easyocr"
+    directory: "resumix/models/easyocr"
+    gpu: False
+  paddle:
+    model: "paddleocr"
+
+  # use_easyocr: True
+  # use_paddle: False
+  # easyocr:
+  #   directory: "resumix/models/easyocr"
+  #   gpu: False

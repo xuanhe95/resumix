@@ -13,7 +13,7 @@ from tool.tool import tool_list
 from utils.llm_client import LLMWrapper, LLMClient
 from parser.resume_rewriter import ResumeRewriter
 
-from config import Config
+from config.config import Config
 
 from streamlit_option_menu import option_menu
 from streamlit_card import card
@@ -56,7 +56,7 @@ T = LANGUAGES[st.session_state.lang]
 # )
 
 
-llm_model = LLMClient(base_url=CONFIG.LLM.URL, model_name=CONFIG.LLM.MODEL)
+llm_model = LLMClient()
 agent = initialize_agent(
     tools=tool_list,
     llm=LLMWrapper(client=llm_model),

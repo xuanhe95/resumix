@@ -15,3 +15,6 @@ __pycache__/
 # VSCode 或 PyCharm 等 IDE 项目文件（可选）
 .vscode/
 .idea/
+
+.env
+.env/

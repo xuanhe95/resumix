@@ -7,7 +7,7 @@ from section_parser.vector_parser import VectorParser
 from utils.logger import logger
 import easyocr
 
-from config import Config
+from config.config import Config
 
 CONFIG = Config().config
 
@@ -18,13 +18,13 @@ def extract_text_from_pdf(file):
 
     ocr_model = None
 
-    if CONFIG.OCR.USE_EASYOCR:
+    if CONFIG.OCR.USE_MODEL == "easyocr":
         ocr_model = easyocr.Reader(
             ["ch_sim", "en"],
             gpu=CONFIG.OCR.EASYOCR.GPU,
             model_storage_directory=CONFIG.OCR.EASYOCR.DIRECTORY,
         )
-    elif CONFIG.OCR.USE_PADDLEOCR:
+    elif CONFIG.OCR.USE_MODEL == "paddleocr":
         ocr_model = PaddleOCR(use_angle_cls=True, lang="ch")
 
     ocr = OCRUtils(ocr_model, dpi=150, keep_images=False)

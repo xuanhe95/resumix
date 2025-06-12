@@ -2,10 +2,7 @@ from langchain.tools import Tool
 from utils.llm_client import LLMClient
 
 # 初始化本地 LLM 客户端
-llm_client = LLMClient(
-    base_url="http://localhost:11434",  # 本地 LLM 接口地址
-    model_name="gemma3:12b",  # 模型名称
-)
+llm_client = LLMClient()
 
 # 包装为 LangChain 工具
 llm_tool = Tool.from_function(
