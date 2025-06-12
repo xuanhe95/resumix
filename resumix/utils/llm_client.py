@@ -51,6 +51,14 @@ class LLMWrapper(BaseLLM):
 
 
 class LLMClient:
+    _instance = None
+
+    def __new__(cls, base_url, model_name, timeout=60):
+        if cls._instance is None:
+            cls._instance = super(LLMClient, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     def __init__(
         self,
         base_url,
@@ -65,6 +73,8 @@ class LLMClient:
             model_name: 模型名称
             timeout: 请求超时时间（秒）
         """
+        if self._initialized:
+            return
         self.base_url = base_url
         self.model_name = model_name
         self.timeout = timeout
