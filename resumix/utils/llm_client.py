@@ -1,11 +1,15 @@
 from uuid import UUID
 import requests
+import os
 from langchain_core.language_models import BaseLLM
 from langchain_core.outputs import Generation, LLMResult
 from typing import Any, List, Optional, Dict
 from pydantic import Field
 from loguru import logger
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 
 class LLMWrapper(BaseLLM):
     client: Any = Field(exclude=True)
@@ -18,7 +22,7 @@ class LLMWrapper(BaseLLM):
 
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
         """
-        调用本地 LLM 生成文本。
+        调用 LLM 生成文本。
 
         参数：
             prompt: 输入提示文本
@@ -27,14 +31,13 @@ class LLMWrapper(BaseLLM):
         返回：
             LLM 生成的字符串。
         """
-
-        logger.info(f"Calling local LLM with prompt: {prompt[:50]}...")
+        logger.info(f"Calling LLM with prompt: {prompt[:50]}...")
         return self.client(prompt)
 
     @property
     def _llm_type(self) -> str:
         """返回 LLM 类型"""
-        return "local_llm"
+        return "llm"
 
     def _generate(
         self,
@@ -58,21 +61,22 @@ class LLMClient:
         timeout=60,
     ):
         """
-        初始化本地 LLM 客户端。
+        初始化 LLM 客户端。
 
         参数：
-            base_url: 本地 LLM 接口地址
+            base_url: LLM 接口地址
             model_name: 模型名称
             timeout: 请求超时时间（秒）
         """
         self.base_url = base_url
         self.model_name = model_name
         self.timeout = timeout
-        logger.info(f"Initialized {model_name} on {base_url}")
+        self.is_local = "localhost" in base_url or "127.0.0.1" in base_url
+        logger.info(f"Initialized {model_name} on {base_url} (Local: {self.is_local})")
 
     def __call__(self, prompt: str) -> str:
         """
-        调用本地 LLM 生成文本。
+        调用 LLM 生成文本。
 
         参数：
             prompt: 输入提示文本
@@ -85,7 +89,7 @@ class LLMClient:
 
     def generate(self, prompt: str) -> str:
         """
-        调用本地 LLM 生成文本。
+        调用 LLM 生成文本。
 
         参数：
             prompt: 输入提示文本
@@ -95,15 +99,45 @@ class LLMClient:
         """
         try:
             logger.info(f"Prompt Length: {len(prompt)}")
-            res = requests.post(
-                self.base_url,
-                json={
+            
+            if self.is_local:
+                # Local LLM format
+                payload = {
                     "model": self.model_name,
                     "prompt": prompt,
                     "stream": False,
-                },
+                }
+            else:
+                # API format (Deepseek)
+                api_key = os.getenv("DEEPSEEK_API_KEY")
+                if not api_key:
+                    raise ValueError("DEEPSEEK_API_KEY not found in environment variables")
+                
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": self.model_name,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7,
+                    "max_tokens": 2000
+                }
+            
+            res = requests.post(
+                self.base_url,
+                json=payload,
+                headers=headers if not self.is_local else None,
                 timeout=self.timeout,
             )
-            return res.json().get("response", "⚠️ Model did not return a result.")
+            
+            if not res.ok:
+                return f"❌ Error: {res.status_code} - {res.text}"
+                
+            if self.is_local:
+                return res.json().get("response", "⚠️ Model did not return a result.")
+            else:
+                return res.json().get("choices", [{}])[0].get("message", {}).get("content", "⚠️ Model did not return a result.")
+                
         except Exception as e:
-            return f"❌ Error calling local model: {e}"
+            return f"❌ Error calling model: {e}"
