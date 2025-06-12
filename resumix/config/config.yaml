@@ -1,12 +1,12 @@
 llm:
-  use_model: "silicon"
+  use_model: "local"
   deepseek:
     model: "deepseek-chat"
     url: "https://api.deepseek.com/v1/chat/completions"
-  local_llm:
+  local:
     model: "gemma3:4b"
     url: "http://localhost:11434/api/generate"
-  docker_llm:
+  docker:
     model: "gemma3:4b"
     url: "http://host.docker.internal:11434/api/generate"
   teleai:

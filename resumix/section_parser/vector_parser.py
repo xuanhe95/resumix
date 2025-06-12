@@ -5,16 +5,16 @@ import sys
 import heapq
 from collections import defaultdict
 
-from utils.logger import logger
+from resumix.utils.logger import logger
 
-from section_parser.section_labels import SectionLabels
+from resumix.section_parser.section_labels import SectionLabels
 
-from section.education_section import EducationSection
-from section.experience_section import ExperienceSection
-from section.info_section import PersonalInfoSection
-from section.projects_section import ProjectsSection
-from section.skills_section import SkillsSection
-from section.section_base import SectionBase
+from resumix.section.education_section import EducationSection
+from resumix.section.experience_section import ExperienceSection
+from resumix.section.info_section import PersonalInfoSection
+from resumix.section.projects_section import ProjectsSection
+from resumix.section.skills_section import SkillsSection
+from resumix.section.section_base import SectionBase
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

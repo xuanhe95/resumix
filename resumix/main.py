@@ -11,7 +11,7 @@ from utils.llm_client import LLMClient
 from langchain.agents import initialize_agent, AgentType
 from tool.tool import tool_list
 from utils.llm_client import LLMWrapper, LLMClient
-from parser.resume_rewriter import ResumeRewriter
+from resumix.rewriter.resume_rewriter import ResumeRewriter
 
 from config.config import Config
 
@@ -21,7 +21,7 @@ from streamlit_card import card
 from components.analysis_module import analysis_card
 from components.polish_module import polish_card
 from components.agent_module import agent_card
-from components.score_module import analyze_resume_with_scores
+from resumix.components.score_page import analyze_resume_with_scores
 from components.compare_module import compare_resume_sections
 
 from utils.session_utils import SessionUtils
@@ -104,6 +104,7 @@ with st.sidebar:
         jd_url = st.text_input(
             T["job_description_title"],
             placeholder="https://example.com/job-description",
+            key="jd_url",
         )
 
     with st.expander(T["user_login"], expanded=False):
@@ -136,8 +137,9 @@ if uploaded_file:
 
     text = st.session_state.resume_text
 
-    STRUCTED_SECTIONS = SessionUtils.get_resume_sections()
-
+    RESUME_SECTIONS = SessionUtils.get_resume_sections()
+    JD_SECTIONS = SessionUtils.get_jd_sections()
+    print(f"JD: {JD_SECTIONS}")
     if tab == tab_names[0]:
         analysis_card(text)
     elif tab == tab_names[1]:
@@ -145,10 +147,10 @@ if uploaded_file:
     elif tab == tab_names[2]:
         agent_card(text)
     elif tab == tab_names[3]:
-        jd_content = SessionUtils.get_job_description_content()
-        analyze_resume_with_scores(STRUCTED_SECTIONS, jd_content, llm_model)
+
+        analyze_resume_with_scores(RESUME_SECTIONS, JD_SECTIONS)
     elif tab == tab_names[4]:
         jd_content = SessionUtils.get_job_description_content()
-        compare_resume_sections(STRUCTED_SECTIONS, jd_content, RESUME_REWRITER)
+        compare_resume_sections(RESUME_SECTIONS, jd_content, RESUME_REWRITER)
 else:
     st.info(T["please_upload"])

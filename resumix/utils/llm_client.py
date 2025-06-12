@@ -11,7 +11,7 @@ import hashlib
 import base64
 import time
 
-from config.llm_config import LLMConfig
+from resumix.config.llm_config import LLMConfig
 
 # Load environment variables
 load_dotenv()
