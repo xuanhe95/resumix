@@ -1,7 +1,6 @@
 llm:
-  model: "gemma3:4b"
-  #url: "http://host.docker.internal:11434/api/generate"
-  url: "http://localhost:11434/api/generate"
+  model: "deepseek-chat"
+  url: "https://api.deepseek.com/v1/chat/completions"
 docker_llm:
   model: "gemma3:4b"
   url: "http://host.docker.internal:11434/api/generate"
@@ -12,4 +11,3 @@ ocr:
   easyocr:
     directory: "resumix/models/easyocr"
     gpu: False
-    
