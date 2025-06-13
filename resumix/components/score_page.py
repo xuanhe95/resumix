@@ -1,8 +1,8 @@
 import streamlit as st
 from utils.logger import logger
 from components.cards.score_card import display_score_card
-import re
 from typing import Dict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from resumix.section.section_base import SectionBase
 from resumix.modules.score_module.score_module import ScoreModule
 
@@ -10,12 +10,9 @@ from resumix.modules.score_module.score_module import ScoreModule
 def analyze_resume_with_scores(
     sections: Dict[str, SectionBase], jd_sections: Dict[str, SectionBase]
 ):
-    logger.info("开始简历评分分析...")
+    logger.info("开始简历评分分析（非顺序）...")
 
     score_module = ScoreModule()
-
-    total = len(sections)
-    progress_bar = st.progress(0)
 
     if "requirements_basic" not in jd_sections:
         st.warning(
@@ -23,17 +20,37 @@ def analyze_resume_with_scores(
         )
         return
 
-    for idx, section in enumerate(sections.values(), 1):
-        with st.spinner(f"正在评分 {section.name}..."):
-            score = score_module.score_resume(
+    section_items = list(sections.items())
+    total = len(section_items)
+    progress_bar = st.progress(0)
+
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        future_to_name = {
+            executor.submit(
+                score_module.score_resume,
                 section,
                 jd_sections["requirements_basic"],
-                jd_sections.get("requirements_preferred", None),
-            )
+                jd_sections.get("requirements_preferred"),
+            ): name
+            for name, section in section_items
+        }
 
-            display_score_card(section.name, score)
-            st.markdown("---")
+        finished = 0
+        for future in as_completed(future_to_name):
+            name = future_to_name[future]
+            try:
+                result = future.result()
+            except Exception as e:
+                logger.warning(f"[Score] {name} 段落评分失败: {e}")
+                result = {"error": str(e)}
 
-        progress_bar.progress(idx / total)
+            # 立即展示（可能无序）
+            section = sections[name]
+            with st.spinner(f"正在展示 {section.name}..."):
+                display_score_card(section.name, result)
+                st.markdown("---")
+
+            finished += 1
+            progress_bar.progress(finished / total)
 
     st.success("所有简历段落评分完成 ✅")

@@ -26,7 +26,9 @@ from components.compare_module import compare_resume_sections
 
 from utils.session_utils import SessionUtils
 
+import concurrent.futures
 from utils.i18n import LANGUAGES
+from resumix.utils.logger import logger
 
 CONFIG = Config().config
 
@@ -130,16 +132,42 @@ with st.sidebar:
             st.session_state.lang = selected_lang
             st.rerun()  # 切换语言后刷新页面
 
+
+def prefetch_resume_sections():
+    try:
+        st.session_state.resume_sections = SessionUtils.get_resume_sections()
+        logger.info("[后台] Resume section 提取完成")
+    except Exception as e:
+        logger.warning(f"[后台] 提取 resume_sections 失败: {e}")
+
+
+def prefetch_jd_sections():
+    try:
+        st.session_state.jd_sections = SessionUtils.get_jd_sections()
+        logger.info("[后台] JD section 提取完成")
+    except Exception as e:
+        logger.warning(f"[后台] 提取 jd_sections 失败: {e}")
+
+
 if uploaded_file:
 
     if "resume_text" not in st.session_state:
         st.session_state.resume_text = SessionUtils.get_resume_text()
 
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+
+    # 后台启动 section 提取（非阻塞）
+    if "resume_sections" not in st.session_state:
+        executor.submit(prefetch_resume_sections)
+
+    # if "jd_sections" not in st.session_state:
+    #     executor.submit(prefetch_jd_sections)
+
     text = st.session_state.resume_text
 
-    RESUME_SECTIONS = SessionUtils.get_resume_sections()
-    JD_SECTIONS = SessionUtils.get_jd_sections()
-    print(f"JD: {JD_SECTIONS}")
+    # RESUME_SECTIONS = SessionUtils.get_resume_sections()
+    # JD_SECTIONS = SessionUtils.get_jd_sections()
+    # print(f"JD: {JD_SECTIONS}")
     if tab == tab_names[0]:
         analysis_card(text)
     elif tab == tab_names[1]:
@@ -147,9 +175,12 @@ if uploaded_file:
     elif tab == tab_names[2]:
         agent_card(text)
     elif tab == tab_names[3]:
+        RESUME_SECTIONS = SessionUtils.get_resume_sections()
+        JD_SECTIONS = JD_SECTIONS = SessionUtils.get_jd_sections()
 
         analyze_resume_with_scores(RESUME_SECTIONS, JD_SECTIONS)
     elif tab == tab_names[4]:
+        RESUME_SECTIONS = SessionUtils.get_resume_sections()
         jd_content = SessionUtils.get_job_description_content()
         compare_resume_sections(RESUME_SECTIONS, jd_content, RESUME_REWRITER)
 else:

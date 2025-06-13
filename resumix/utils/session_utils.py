@@ -31,7 +31,7 @@ def extract_text_from_pdf(file):
     elif CONFIG.OCR.USE_MODEL == "paddleocr":
         ocr_model = PaddleOCR(use_angle_cls=True, lang="ch")
 
-    ocr = OCRUtils(ocr_model, dpi=150, keep_images=False)
+    ocr = OCRUtils(ocr_model, dpi=50, keep_images=False)
 
     return ocr.extract_text(file, max_pages=1)
 
@@ -45,6 +45,7 @@ def extract_job_description(jd_url):
 
 class SessionUtils:
     @staticmethod
+    @st.cache_data(show_spinner="提取简历文本")
     def get_resume_text():
         if "resume_text" not in st.session_state:
             if "uploaded_file" not in st.session_state:
@@ -76,6 +77,7 @@ class SessionUtils:
         return st.session_state.jd_content
 
     @staticmethod
+    @st.cache_data(show_spinner="提取简历段落")
     def get_resume_sections():
         if "resume_sections" not in st.session_state:
             text = SessionUtils.get_resume_text()
@@ -126,6 +128,7 @@ class SessionUtils:
             and "jd_sections" in st.session_state
             and "jd_content" in st.session_state
         ):
+            logger.info(f"[SessionUtils] 当前url: {url}, 缓存url: {url}")
             logger.info("[SessionUtils] JD URL 未变化，使用缓存内容")
             return st.session_state.jd_sections
         try:
