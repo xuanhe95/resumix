@@ -10,6 +10,10 @@ RESUMIX is a tool for generating resumes in various formats. It allows users to 
 
 
 ### Usage
+```bash
+export PYTHONPATH=$(pwd):$PYTHONPATH
+```
+
 1. Install the Poetry package manager if you haven't already:
    ```bash
    pip install poetry

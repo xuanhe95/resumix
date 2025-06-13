@@ -1,4 +1,5 @@
-from section.section_base import SectionBase
+from resumix.section.section_base import SectionBase
+
 
 class ExperienceSection(SectionBase):
     def parse(self):
@@ -10,12 +11,14 @@ class ExperienceSection(SectionBase):
                 company = lines[0]
                 title_and_date = lines[1]
                 highlights = [l for l in lines[2:] if l.startswith("-")]
-                entries.append({
-                    "company": company,
-                    "position": title_and_date,
-                    "startDate": "",
-                    "endDate": "",
-                    "location": "",
-                    "highlights": [h.lstrip("- ").strip() for h in highlights],
-                })
+                entries.append(
+                    {
+                        "company": company,
+                        "position": title_and_date,
+                        "startDate": "",
+                        "endDate": "",
+                        "location": "",
+                        "highlights": [h.lstrip("- ").strip() for h in highlights],
+                    }
+                )
         self.parsed_data = entries

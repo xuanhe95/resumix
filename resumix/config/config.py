@@ -4,24 +4,28 @@ from types import SimpleNamespace
 from threading import Lock
 from pathlib import Path
 
+
 def dict_to_namespace(d):
     if isinstance(d, dict):
-        return SimpleNamespace(**{k.upper(): dict_to_namespace(v) for k, v in d.items()})
+        return SimpleNamespace(
+            **{k.upper(): dict_to_namespace(v) for k, v in d.items()}
+        )
     elif isinstance(d, list):
         return [dict_to_namespace(i) for i in d]
     else:
         return d
+
 
 class Config:
     _instance = None
     _lock = Lock()  # 保证线程安全
 
     def __new__(cls, path=None):
-        
+
         if path is None:
             base_dir = Path(__file__).resolve().parent
             path = base_dir / "config.yaml"
-        
+
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:

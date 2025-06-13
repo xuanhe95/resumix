@@ -1,17 +1,21 @@
 import os
 import sys
+import re
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 
-from typing import Dict, List
-from jd_section_labels import JDSectionLabels
-from section_parser.base_parser import BaseParser
+from typing import Dict, List, Tuple, Union
+from resumix.section_parser.jd_section_labels import JDSectionLabels
+from resumix.section_parser.base_parser import BaseParser
+from resumix.utils.url_fetcher import UrlFetcher
 import requests
 import chardet
 from bs4 import BeautifulSoup
-from utils.llm_client import LLMClient
+from resumix.utils.llm_client import LLMClient
 import json
+from resumix.utils.logger import logger
+from resumix.section.section_base import SectionBase
 
 
 class JDVectorParser(BaseParser):
@@ -20,66 +24,223 @@ class JDVectorParser(BaseParser):
     ):
         section_labels = JDSectionLabels.get_labels(["zh", "en"])
         super().__init__(section_labels, model_name, threshold)
-        self.llm_client = LLMClient(
-            base_url="http://localhost:11434/api/generate", model_name="llama3.2:3b"
-        )
+        self.llm_client = LLMClient()
 
-    def parse(self, jd_text: str) -> Dict[str, List[str]]:
-        lines = self.normalize_text(jd_text, keep_blank=True)
-        section_map = self.detect_sections(lines)
-        return section_map
+    def parse(self, jd_text: str) -> Dict[str, SectionBase]:
+        """
+        尝试使用 LLM 提取结构化 JD 段落；若失败则回退到向量匹配。
+        返回格式为 Dict[str, SectionBase]，每个字段对应一个段落对象。
+        """
+        try:
+            llm_sections = self.parse_with_llm(jd_text)
+            logger.info(f"LLM Sections: {llm_sections}")
+
+            if not isinstance(llm_sections, dict):
+                raise ValueError("LLM返回值不是字典类型")
+
+            if not any(llm_sections.values()):
+                raise ValueError("LLM返回内容为空")
+
+            structured_sections = {}
+
+            for tag, content in llm_sections.items():
+                try:
+                    # 合并嵌套结构为纯文本
+                    if isinstance(content, dict):
+                        lines = [
+                            f"{k}: {v}"
+                            for k, v in content.items()
+                            if isinstance(v, str) and v.strip()
+                        ]
+                        text = "\n".join(lines)
+                    elif isinstance(content, str):
+                        text = content.strip()
+                    else:
+                        raise TypeError(f"段落 {tag} 类型非法：{type(content)}")
+
+                    if not text:
+                        raise ValueError(f"段落 {tag} 内容为空")
+
+                    line_list = self.normalize_text(text, keep_blank=True)
+                    raw_text = "\n".join(line_list)
+                    tag_key = tag.lower().replace(" ", "_")
+
+                    cls = SectionBase
+                    section_obj = cls(tag_key, raw_text)
+                    section_obj.original_lines = line_list
+                    section_obj.parsed_data = {"raw": raw_text}
+
+                    structured_sections[tag_key] = section_obj
+                except Exception as e_section:
+                    logger.warning(
+                        f"[JDVectorParser] 段落处理失败: {tag} - {e_section}"
+                    )
+
+            if structured_sections:
+                logger.info("[JDVectorParser] Parsed sections with LLM")
+                return structured_sections
+            else:
+                raise ValueError("所有段落处理失败，无有效结构")
+
+        except Exception as e:
+            import traceback
+
+            logger.warning(
+                f"[JDVectorParser] LLM parsing failed, fallback to vector. Reason: {e}"
+            )
+            logger.debug(traceback.format_exc())
+
+        # fallback：向量结构解析
+        try:
+            line_list = self.normalize_text(jd_text, keep_blank=True)
+            section_lines = self.detect_sections(line_list)
+            structured_sections = {}
+
+            for section, lines in section_lines.items():
+                raw_text = "\n".join(lines)
+                cls = SectionBase
+                section_obj = cls(section, raw_text)
+                section_obj.original_lines = lines
+                section_obj.parsed_data = {"raw": raw_text}
+                section_obj.parse()
+
+                logger.info(f"[JDVectorParser] Fallback section '{section}'")
+                structured_sections[section] = section_obj
+
+            logger.info("[JDVectorParser] Parsed sections with vector fallback")
+            return structured_sections
+        except Exception as e:
+            logger.error(f"[JDVectorParser] fallback 向量解析也失败: {e}")
+            logger.debug(traceback.format_exc())
+            return {"overview": SectionBase("overview", "❌ 无法解析 JD 内容。")}
 
     def fetch_text_from_url(self, url: str) -> str:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
+        logger.info(f"[JD Fetcher] 开始抓取 URL: {url}")
 
-        # 自动检测编码（更强健）
-        detected = chardet.detect(response.content)
-        encoding = detected["encoding"] or "utf-8"
-        html = response.content.decode(encoding, errors="replace")
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/115.0.0.0 Safari/537.36"
+            )
+        }
 
-        soup = BeautifulSoup(html, "html.parser")
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            logger.info(f"[JD Fetcher] HTTP 状态码: {response.status_code}")
 
-        # 过滤掉 script/style 等无用标签
-        for tag in soup(
-            ["script", "style", "noscript", "footer", "header", "nav", "form", "meta"]
-        ):
-            tag.decompose()
+            # 自动检测网页编码
+            detected = chardet.detect(response.content)
+            encoding = detected["encoding"] or "utf-8"
+            logger.info(f"[JD Fetcher] 检测到网页编码: {encoding}")
 
-        tags = soup.find_all(["p", "li", "div", "section"])
-        text = "\n".join(t.get_text(strip=True) for t in tags if t.get_text(strip=True))
-        return text
+            html = response.content.decode(encoding, errors="replace")
+            soup = BeautifulSoup(html, "html.parser")
+
+            # 清除非正文区域
+            for tag in soup(
+                [
+                    "script",
+                    "style",
+                    "noscript",
+                    "footer",
+                    "header",
+                    "nav",
+                    "form",
+                    "meta",
+                    "aside",
+                ]
+            ):
+                tag.decompose()
+
+            # 提取正文段落
+            tags = soup.find_all(["p", "li", "div", "section"])
+            text_lines = [
+                t.get_text(strip=True) for t in tags if t.get_text(strip=True)
+            ]
+            logger.info(f"[JD Fetcher] 抽取文本段落数量: {len(text_lines)}")
+
+            if not text_lines:
+                logger.warning(
+                    "[JD Fetcher] 抓取结果为空，可能被反爬或内容为 JS 渲染。"
+                )
+
+            return "\n".join(text_lines)
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"[JD Fetcher] 请求失败: {e}")
+            return ""
+
+        except Exception as e:
+            logger.error(f"[JD Fetcher] 抓取解析异常: {e}")
+            return ""
 
     PROMPT = """
-    你将作为结构化信息提取专家，输入为网页正文内容，输出为结构化段落。请严格按照我提供的标签（labels）进行分段提取。
+You are an expert in structured information extraction. Your task is to extract structured sections from raw webpage content based on the specified labels. Please strictly follow the label definitions provided below.
 
-        ### 任务目标：
-        将网页正文内容解析成指定结构，每一段对应一个标签（label）。若某个标签在网页中无对应内容，则保留标签但内容为空字符串。
+### Task Objective:
+Parse the input job description into a structured format. Each section of the content should correspond to one of the labels. If a particular section is not present in the content, keep the label in the output with an empty string.
 
-        ### 我的标签如下：
-        - Overview (Job Title, Location)
-        - Responsibilities
-        - Basic Qualifications
-        - Preferred Qualifications
+### The labels are:
+- Overview (Job Title, Location)
+- Responsibilities
+- Requirements Basic
+- Requirements Preferred
 
-        ### 要求：
-        1. 使用 JSON 格式输出；
-        2. 每个标签作为一个字段，字段值为该部分正文内容；
-        3. 尽量保持原始表达，不要改写、总结或省略；
-        4. 若有 bullet points，请保留其结构。
+### Requirements:
+1. The output must be in valid JSON format.
+2. Each label should be a top-level field in the JSON, and its value should contain the corresponding content.
+3. Try to preserve the original expressions; do not rewrite, summarize, or omit.
+4. If the content includes bullet points, keep their original structure.
 
-        ### 输入正文（网页内容）如下：
-        """
+### Input content (from webpage):
+"""
 
-    def parse_with_llm(self, jd_text: str) -> str:
+    def parse_with_llm(self, jd_text: str) -> Dict[str, str]:
         prompt = self.PROMPT + jd_text.strip()
         response = self.llm_client(prompt)
+
+        logger.debug(f"[JDVectorParser] Raw LLM response: {repr(response)}")
+
+        def clean_json(text: str) -> str:
+            text = text.strip()
+
+            # 去掉开头 ```json 或 ```
+            if text.startswith("```"):
+                text = re.sub(r"^```(json)?", "", text)
+            # 去掉结尾 ```
+            if text.endswith("```"):
+                text = text[:-3]
+            return text.strip()
+
         try:
-            structured_data = json.loads(response)
-            return json.dumps(structured_data, indent=2, ensure_ascii=False)
+            cleaned = clean_json(response)
+
+            if not cleaned:
+                raise ValueError("LLM 返回为空或内容无效")
+
+            parsed = json.loads(cleaned)
+
+            if not isinstance(parsed, dict):
+                raise TypeError(f"LLM 返回 JSON 类型错误: {type(parsed)}")
+
+            logger.info(f"[JDVectorParser] LLM JSON解析成功，字段数: {len(parsed)}")
+            return parsed
+
+        except json.JSONDecodeError as je:
+            logger.warning(f"[JDVectorParser] JSONDecodeError: {je}")
         except Exception as e:
-            print(f"Error parsing LLM response: {e}")
-            return response  # 如果解析失败也返回原始文本
+            logger.warning(f"[JDVectorParser] LLM parsing failed: {e}")
+
+        # fallback 兜底结构，防止后续代码崩溃
+        return {
+            "Overview": "",
+            "Responsibilities": "",
+            "Basic Qualifications": "",
+            "Preferred Qualifications": "",
+            "RawText": response,
+        }
 
 
 if __name__ == "__main__":
@@ -129,17 +290,17 @@ Our inclusive culture empowers Amazonians to deliver the best results for our cu
 
 Our compensation reflects the cost of labor across several US geographic markets. The base pay for this position ranges from $129,300/year in our lowest geographic market up to $223,600/year in our highest geographic market. Pay is based on a number of factors including market location and may vary depending on job-related knowledge, skills, and experience. Amazon is a total compensation company. Dependent on the position offered, equity, sign-on payments, and other forms of compensation may be provided as part of a total compensation package, in addition to a full range of medical, financial, and/or other benefits. For more information, please visit https://www.aboutamazon.com/workplace/employee-benefits. This position will remain posted until filled. Applicants should apply via our internal or external career site.
     """
-    html = "https://www.amazon.jobs/en/jobs/2975712/software-dev-engineer-ii-aws-healthcare-ai"
+    html = (
+        "https://www.amazon.jobs/en/jobs/2886461/devops-engineer-esc-managed-operations"
+    )
     parser = JDVectorParser()
+    # parser.parse(sample_jd)
+    text = UrlFetcher.fetch(html)
 
-    # text = parser.fetch_text_from_url(html)
-    # structured = parser.parse_with_llm(text)
+    logger.info(text)
+    structured = parser.parse(text)
 
-    structured = parser.parse(sample_jd)
+    # structured = parser.parse(sample_jd)
 
-    print(f"共解析出 {len(structured)} 个 JD 段落：\n")
-    for section, lines in structured.items():
-        print(f"Section: {section}")
-        print("---" * 20)
-        print("\n".join(lines))
-        print("\n---\n")
+    for k, v in structured.items():
+        logger.info(f"{k}:{v}")
