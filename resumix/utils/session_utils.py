@@ -1,11 +1,11 @@
 from utils.ocr_utils import OCRUtils
 import streamlit as st
-from parser.jd_parser import JDParser
+from job_parser.jd_parser import JDParser
 from paddleocr import PaddleOCR
-from parser.resume_parser import ResumeParser
-from section_parser.vector_parser import VectorParser
+from job_parser.resume_parser import ResumeParser
 from utils.logger import logger
 import easyocr
+from section_parser.vector_parser import VectorParser  
 
 from config import Config
 
