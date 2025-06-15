@@ -4,17 +4,18 @@ import os
 import sys
 import heapq
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from resumix.utils.logger import logger
 
-from utils.logger import logger
+from resumix.section_parser.section_labels import SectionLabels
 
-from section_parser.section_labels import SectionLabels
-
-from section.education_section import EducationSection
-from section.experience_section import ExperienceSection
-from section.info_section import PersonalInfoSection
-from section.projects_section import ProjectsSection
-from section.skills_section import SkillsSection
-from section.section_base import SectionBase
+from resumix.section.education_section import EducationSection
+from resumix.section.experience_section import ExperienceSection
+from resumix.section.info_section import PersonalInfoSection
+from resumix.section.projects_section import ProjectsSection
+from resumix.section.skills_section import SkillsSection
+from resumix.section.section_base import SectionBase
+from resumix.utils.timeit import timeit
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -81,15 +82,45 @@ class VectorParser:
         else:
             return (None, score)
 
-    def detect_sections(self, lines: List[str]) -> Dict[str, List[str]]:
-        for idx, line in enumerate(lines):
-            logger.debug(f"Processing line {idx}: '{line}'")
-        tag_heaps: Dict[str, List[Tuple[float, int, str]]] = defaultdict(list)
+    @timeit()
+    def detect_headers(self, lines: List[str]):
+        logger.debug("开始并行识别 Section Header...")
 
+        tag_heaps: Dict[str, List[Tuple[float, int, str]]] = defaultdict(list)
+        with ThreadPoolExecutor(max_workers=8) as execcutor:
+            future_to_idx = {
+                execcutor.submit(self.is_section_header, line): idx
+                for idx, line in enumerate(lines)
+            }
+
+            for future in future_to_idx:
+                idx = future_to_idx[future]
+                try:
+                    tag, score = future.result()
+                    if tag is not None:
+                        heapq.heappush(tag_heaps[tag], (-score, idx))
+
+                except Exception as e:
+                    logger.warning(
+                        f"[detect_sections] Line {idx} header detection failed: {e}"
+                    )
+
+        return tag_heaps
+
+    @timeit()
+    def detect_headers_sync(self, lines: List[str]):
+        tag_heaps: Dict[str, List[Tuple[float, int, str]]] = defaultdict(list)
         for idx, line in enumerate(lines):
             (tag, score) = self.is_section_header(line)
             if tag is not None:
                 heapq.heappush(tag_heaps[tag], (-score, idx))  # 使用负分数实现最大堆
+        return tag_heaps
+
+    def detect_sections(self, lines: List[str]) -> Dict[str, List[str]]:
+        for idx, line in enumerate(lines):
+            logger.debug(f"Processing line {idx}: '{line}'")
+
+        tag_heaps = self.detect_headers(lines)
 
         # 防止 tag_heaps 为空的情况
         if tag_heaps is None or not tag_heaps:

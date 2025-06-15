@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from sentence_transformers import SentenceTransformer, util
 import heapq
 from collections import defaultdict
-from utils.logger import logger
+from resumix.utils.logger import logger
 
 
 class BaseParser(ABC):
@@ -79,7 +79,8 @@ class BaseParser(ABC):
         for i, (start_idx, tag) in enumerate(header_list):
             end_idx = header_list[i + 1][0] if i + 1 < len(header_list) else len(lines)
             section_lines = lines[start_idx:end_idx]
-
+            # 如果没有内容，直接跳过
+            cutoff_idx = len(section_lines)
             if unmatched_break:
                 # 👇 加入提前终止逻辑
                 unmatched_count = 0

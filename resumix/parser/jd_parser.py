@@ -5,7 +5,6 @@ import sys
 import os
 
 
-
 class JDParser:
     def __init__(self, llm):
         self.llm = llm
@@ -49,9 +48,7 @@ if __name__ == "__main__":
     # 示例：使用本地 LLM 客户端
     from utils.llm_client import LLMClient
 
-    llm = LLMClient(
-        base_url="http://host.docker.internal:11434", model_name="gemma3:12b"
-    )
+    llm = LLMClient()
     parser = JDParser(llm)
 
     # 示例 URL
