@@ -37,7 +37,7 @@ from job_parser.resume_rewriter import ResumeRewriter
 from job_parser.jd_parser import JDParser
 from tool.tool import tool_list
 from resumix.utils.logger import logger
-from resumix.components.score_page import analyze_resume_with_scores
+from resumix.components.score_page import ScorePage
 
 
 # Config setup
@@ -182,11 +182,7 @@ if uploaded_file:
             agent_card(text=text, jd_content=jd_content, agent=agent, show_scores=True)
 
         elif selected_tab == tab_names[3]:  # Score
-
-            analyze_resume_with_scores(
-                sections=STRUCTED_SECTIONS,
-                jd_sections=jd_content,
-            )
+            ScorePage().render()
 
         elif selected_tab == tab_names[4]:  # Compare
             compare_resume_sections(
