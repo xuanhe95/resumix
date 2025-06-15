@@ -1,61 +1,40 @@
 # from paddleocr import PaddleOCR
 import streamlit as st
+import concurrent.futures
+from pathlib import Path
 
 # Initialize session state
 if "lang" not in st.session_state:
     st.session_state.lang = "en"
 
-import sys
-import os
-from pathlib import Path
-from langchain.agents import initialize_agent, AgentType
-from tool.tool import tool_list
-from utils.llm_client import LLMWrapper, LLMClient
-from resumix.rewriter.resume_rewriter import ResumeRewriter
+# Import card components (updated imports)
+from resumix.components.cards.analysis_card import AnalysisCard
+from resumix.components.cards.polish_card import PolishCard
+from resumix.components.cards.agent_card import AgentCard
+from resumix.components.cards.score_card import ScoreCard
+from resumix.components.cards.compare_card import CompareCard
 
-from config.config import Config
-
-from streamlit_option_menu import option_menu
-
-# Import card components
-from resumix.components.cards.analysis_card import analysis_card
-from resumix.components.cards.polish_card import polish_card
-from resumix.components.cards.agent_card import agent_card
-from resumix.components.cards.score_card import (
-    display_score_card,
-)
-from resumix.components.cards.compare_card import compare_resume_sections
-
-# Import utilities
+# Import utilities and other components
 from utils.ocr_utils import OCRUtils
 from utils.llm_client import LLMClient, LLMWrapper
 from utils.session_utils import SessionUtils
-
-import concurrent.futures
 from utils.i18n import LANGUAGES
 from job_parser.resume_rewriter import ResumeRewriter
 from job_parser.jd_parser import JDParser
 from tool.tool import tool_list
 from resumix.utils.logger import logger
 from resumix.components.score_page import ScorePage
-
+from config.config import Config
+from langchain.agents import initialize_agent, AgentType
 
 # Config setup
 CONFIG = Config().config
 CURRENT_DIR = Path(__file__).resolve().parent
 ASSET_DIR = CURRENT_DIR / "assets" / "logo.png"
 
-
 T = LANGUAGES[st.session_state.lang]
 
-# card(
-#     title=T["title"],
-#     text="test",
-#     image="assets/logo.png",
-#     url="www.resumix.com",
-# )
-
-
+# Initialize LLM and agent
 llm_model = LLMClient()
 agent = initialize_agent(
     tools=tool_list,
@@ -132,14 +111,12 @@ with st.sidebar:
             st.session_state.lang = selected_lang
             st.rerun()
 
-
 def prefetch_resume_sections():
     try:
         st.session_state.resume_sections = SessionUtils.get_resume_sections()
         logger.info("[后台] Resume section 提取完成")
     except Exception as e:
         logger.warning(f"[后台] 提取 resume_sections 失败: {e}")
-
 
 def prefetch_jd_sections():
     try:
@@ -148,7 +125,6 @@ def prefetch_jd_sections():
     except Exception as e:
         logger.warning(f"[后台] 提取 jd_sections 失败: {e}")
 
-
 if uploaded_file:
     # Initialize session data if not exists
     if "resume_text" not in st.session_state:
@@ -156,40 +132,52 @@ if uploaded_file:
 
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
-    # 后台启动 section 提取（非阻塞）
+    # Background section extraction (non-blocking)
     if "resume_sections" not in st.session_state:
         executor.submit(prefetch_resume_sections)
-
-    # if "jd_sections" not in st.session_state:
-    #     executor.submit(prefetch_jd_sections)
 
     text = st.session_state.resume_text
     STRUCTED_SECTIONS = SessionUtils.get_resume_sections()
     jd_content = SessionUtils.get_job_description_content()
 
-    # Tab routing with card components
+    # Sample scores data (replace with your actual scoring logic)
+    sample_scores = {
+        "完整性": 8,
+        "清晰度": 7,
+        "匹配度": 6 if jd_content else 5,
+        "表达专业性": 8,
+        "成就导向": 7,
+        "数据支撑": 5,
+        "评语": "简历整体良好，但可增加更多量化成果",
+    }
+
+    # Tab routing with updated card components
     with st.container():
         if selected_tab == tab_names[0]:  # Analysis
-            pass
-            analysis_card(text=text, show_scores=True, show_analysis=True)
+            analysis_card = AnalysisCard()
+            analysis_card.render()
+            analysis_card.render_analysis(text)
 
         elif selected_tab == tab_names[1]:  # Polish
-            pass
-            polish_card(text=text, llm_model=llm_model, show_scores=False)
+            polish_card = PolishCard()
+            polish_card.render()
+            polish_card.render_polishing(text, llm_model)
 
         elif selected_tab == tab_names[2]:  # Agent
-            pass
-            agent_card(text=text, jd_content=jd_content, agent=agent, show_scores=True)
+            agent_card = AgentCard()
+            agent_card.render()
+            agent_card.render_agent_interaction(text, jd_content, agent)
 
         elif selected_tab == tab_names[3]:  # Score
             ScorePage().render()
+            # Alternatively, using ScoreCard for each section:
+            # for section_name in STRUCTED_SECTIONS.keys():
+            #     score_card = ScoreCard(section_name, sample_scores)
+            #     score_card.render()
 
         elif selected_tab == tab_names[4]:  # Compare
-            compare_resume_sections(
-                sections=STRUCTED_SECTIONS,
-                jd_content=jd_content,
-                rewriter=RESUME_REWRITER,
-                use_card_template=True,
-            )
+            compare_card = CompareCard()
+            compare_card.render()
+            compare_card.render_comparison(STRUCTED_SECTIONS, jd_content, RESUME_REWRITER)
 else:
     st.info(T["please_upload"])
