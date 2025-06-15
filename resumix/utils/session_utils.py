@@ -1,6 +1,6 @@
 from utils.ocr_utils import OCRUtils
 import streamlit as st
-from parser.jd_parser import JDParser
+from job_parser.jd_parser import JDParser
 from paddleocr import PaddleOCR
 from resumix.parser.resume_parser import ResumeParser
 from resumix.section_parser.vector_parser import VectorParser
@@ -10,8 +10,7 @@ from resumix.utils.logger import logger
 from resumix.utils.url_fetcher import UrlFetcher
 import easyocr
 
-
-from config.config import Config
+from config import Config
 
 CONFIG = Config().config
 

@@ -1,13 +1,8 @@
-## from paddleocr import PaddleOCR
+#from paddleocr import PaddleOCR
 import streamlit as st
-
+import sys
+import os
 from pathlib import Path
-
-from parser.jd_parser import JDParser
-from utils.ocr_utils import OCRUtils
-from utils.llm_client import LLMClient
-
-
 from langchain.agents import initialize_agent, AgentType
 from tool.tool import tool_list
 from utils.llm_client import LLMWrapper, LLMClient
@@ -16,37 +11,36 @@ from resumix.rewriter.resume_rewriter import ResumeRewriter
 from config.config import Config
 
 from streamlit_option_menu import option_menu
-from streamlit_card import card
 
-from components.analysis_module import analysis_card
-from components.polish_module import polish_card
-from components.agent_module import agent_card
-from resumix.components.score_page import analyze_resume_with_scores
-from components.compare_module import compare_resume_sections
+# Import card components
+from components.cards.analysis_card import analysis_card
+from components.cards.polish_card import polish_card
+from components.cards.agent_card import agent_card
+from components.cards.score_card import (
+    display_score_card,
+    analyze_resume_with_scores
+)
+from components.cards.compare_card import compare_resume_sections
 
+# Import utilities
+from utils.ocr_utils import OCRUtils
+from utils.llm_client import LLMClient, LLMWrapper
 from utils.session_utils import SessionUtils
 
 import concurrent.futures
 from utils.i18n import LANGUAGES
-from resumix.utils.logger import logger
+from job_parser.resume_rewriter import ResumeRewriter
+from job_parser.jd_parser import JDParser
+from tool.tool import tool_list
 
+# Config setup
 CONFIG = Config().config
-
 CURRENT_DIR = Path(__file__).resolve().parent
 ASSET_DIR = CURRENT_DIR / "assets" / "logo.png"
 
-
-st.set_page_config(
-    page_title="RESUMIX",
-    page_icon="📄",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-
+# Initialize session state
 if "lang" not in st.session_state:
     st.session_state.lang = "en"
-
 
 T = LANGUAGES[st.session_state.lang]
 
@@ -70,38 +64,38 @@ agent = initialize_agent(
 
 RESUME_REWRITER = ResumeRewriter(llm_model)
 
+# Page configuration
+st.set_page_config(
+    page_title="RESUMIX",
+    page_icon="📄",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-col1, col2 = st.columns([1, 3])
-with col1:
+# Header section
+header_col1, header_col2 = st.columns([1, 3])
+with header_col1:
     st.image(ASSET_DIR, width=60)
-    pass
-with col2:
+with header_col2:
     st.title(T["title"])
 
-# ========== 页面主入口 ==========
+# Main navigation
 tab_names = T["tabs"]
-
-tab = option_menu(
+selected_tab = option_menu(
     menu_title=None,
     options=tab_names,
-    icons=[
-        "file-text",
-        "pencil",
-        "robot",
-        "bar-chart",
-        "file-earmark-break",
-    ],
+    icons=["file-text", "pencil", "robot", "bar-chart", "file-earmark-break"],
     orientation="horizontal",
 )
 
-
-uploaded_file = None
+# Sidebar components
 with st.sidebar:
-
+    # Resume upload
     with st.expander(T["upload_resume"], expanded=True):
         uploaded_file = st.file_uploader(T["upload_resume_title"], type=["pdf"])
         SessionUtils.upload_resume_file(uploaded_file)
 
+    # Job description
     with st.expander(T["job_description"], expanded=True):
         jd_url = st.text_input(
             T["job_description_title"],
@@ -109,6 +103,7 @@ with st.sidebar:
             key="jd_url",
         )
 
+    # Authentication
     with st.expander(T["user_login"], expanded=False):
         if not st.session_state.get("authenticated"):
             username = st.text_input("Username")
@@ -122,6 +117,7 @@ with st.sidebar:
             if st.button(T["logout"]):
                 st.session_state.authenticated = False
 
+    # Language selection
     with st.expander(T["language"], expanded=False):
         selected_lang = st.selectbox(
             "Global",
@@ -130,7 +126,7 @@ with st.sidebar:
         )
         if selected_lang != st.session_state.lang:
             st.session_state.lang = selected_lang
-            st.rerun()  # 切换语言后刷新页面
+            st.rerun()
 
 
 def prefetch_resume_sections():
@@ -150,7 +146,7 @@ def prefetch_jd_sections():
 
 
 if uploaded_file:
-
+    # Initialize session data if not exists
     if "resume_text" not in st.session_state:
         st.session_state.resume_text = SessionUtils.get_resume_text()
 
@@ -164,24 +160,47 @@ if uploaded_file:
     #     executor.submit(prefetch_jd_sections)
 
     text = st.session_state.resume_text
+    STRUCTED_SECTIONS = SessionUtils.get_resume_sections()
+    jd_content = SessionUtils.get_job_description_content()
 
-    # RESUME_SECTIONS = SessionUtils.get_resume_sections()
-    # JD_SECTIONS = SessionUtils.get_jd_sections()
-    # print(f"JD: {JD_SECTIONS}")
-    if tab == tab_names[0]:
-        analysis_card(text)
-    elif tab == tab_names[1]:
-        polish_card(text, llm_model)
-    elif tab == tab_names[2]:
-        agent_card(text)
-    elif tab == tab_names[3]:
-        RESUME_SECTIONS = SessionUtils.get_resume_sections()
-        JD_SECTIONS = JD_SECTIONS = SessionUtils.get_jd_sections()
-
-        analyze_resume_with_scores(RESUME_SECTIONS, JD_SECTIONS)
-    elif tab == tab_names[4]:
-        RESUME_SECTIONS = SessionUtils.get_resume_sections()
-        jd_content = SessionUtils.get_job_description_content()
-        compare_resume_sections(RESUME_SECTIONS, jd_content, RESUME_REWRITER)
+    # Tab routing with card components
+    with st.container():
+        if selected_tab == tab_names[0]:  # Analysis
+            analysis_card(
+                text=text,
+                show_scores=True,
+                show_analysis=True
+            )
+            
+        elif selected_tab == tab_names[1]:  # Polish
+            polish_card(
+                text=text,
+                llm_model=llm_model,
+                show_scores=False
+            )
+            
+        elif selected_tab == tab_names[2]:  # Agent
+            agent_card(
+                text=text,
+                jd_content=jd_content,
+                agent=agent,
+                show_scores=True
+            )
+            
+        elif selected_tab == tab_names[3]:  # Score
+            analyze_resume_with_scores(
+                sections=STRUCTED_SECTIONS,
+                jd_content=jd_content,
+                llm_model=llm_model,
+                use_card_template=True
+            )
+            
+        elif selected_tab == tab_names[4]:  # Compare
+            compare_resume_sections(
+                sections=STRUCTED_SECTIONS,
+                jd_content=jd_content,
+                rewriter=RESUME_REWRITER,
+                use_card_template=True
+            )
 else:
     st.info(T["please_upload"])

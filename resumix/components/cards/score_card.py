@@ -1,9 +1,16 @@
+# components/cards/score_card.py
 import streamlit as st
 from resumix.utils.logger import logger
 import matplotlib.pyplot as plt
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
+
+from typing import Dict
+from resumix.components.cards.display_card import display_card  # Updated import
+from resumix.job_parser.resume_parser import ResumeParser
+from resumix.utils.logger import logger
+
 
 
 def display_score_card(section_name: str, scores: dict):
