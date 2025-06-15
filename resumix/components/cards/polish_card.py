@@ -1,64 +1,62 @@
+# file: components/cards/polish_card.py
 import streamlit as st
 from job_parser.resume_parser import ResumeParser
 from utils.logger import logger
-from .display_card import display_card  # Import your shared template
+from typing import Callable, Dict
+from components.cards.base_card import BaseCard
+from typing import Optional 
 
 
-def polish_card(text: str, llm_model, show_scores: bool = False):
-    """
-    Enhanced polish card using the shared template
-
-    Args:
-        text: Resume text to polish
-        llm_model: LLM model for generating improvements
-        show_scores: Whether to display scoring visualization
-    """
-    logger.info("Handling Resume Polishing with provided resume text.")
-    parser = ResumeParser()
-    sections = parser.parse_resume(text)
-
-    if show_scores:
-        # Card template version with scores
-        display_card(
-            title="简历润色",
-            icon="✨",
-            scores={
-                "语言流畅度": 8,
-                "专业性": 7,
-                "清晰度": 6,
-                "结构合理性": 7,
-                "成就突出度": 5,
-            },
-            comment="AI建议的改进方案如下",
-            additional_content=_generate_polish_content(sections, llm_model),
-            dimensions=["语言流畅度", "专业性", "清晰度", "结构合理性", "成就突出度"],
+class PolishCard(BaseCard):
+    def __init__(
+        self,
+        title: str = "Resume Polishing",
+        icon: str = "✨",
+        comment: Optional[str] = None,
+        additional_content: Optional[str] = None,
+    ):
+        super().__init__(
+            title=title,
+            icon=icon,
+            comment=comment,
+            additional_content=additional_content
         )
-    else:
-        # Original simple version
-        st.markdown("### ✨ 简历润色")
-        _generate_polish_content(sections, llm_model)
-
-
-def _generate_polish_content(sections: dict, llm_model):
-    """Generate the polish suggestions content"""
-    with st.expander("查看AI润色建议", expanded=True):
+        self.parser = ResumeParser()
+        
+    def render_polish_result(self, result: str):
+        """Render the polished result from LLM"""
+        st.chat_message("Resumix").write(result)
+    
+    def render_section_polish(self, section: str, content: str, llm_model: Callable):
+        """Render polishing for a single section"""
+        prompt = f"Please recommend improvements for the following resume section:\n\n{content}"
+        result = llm_model(prompt)
+        self.render_polish_result(result)
+    
+    def render_polishing(
+        self,
+        text: str,
+        llm_model: Callable
+    ):
+        """Main polishing rendering logic"""
+        logger.info("Polishing all resume sections using LLM")
+        sections = self.parser.parse_resume(text)
+        
         for section, content in sections.items():
-            if not content.strip():
-                continue
+            st.subheader(section)
+            self.render_section_polish(section, content, llm_model)
+            st.divider()
+    
+    def render(self):
+        self.render_header()
+        if self.comment:
+            self.render_comment()
+        self.render_additional()
 
-            prompt = f"""请为以下简历段落提供改进建议，重点关注：
-1. 语言表达的流畅性和专业性
-2. 成就和技能的突出展示
-3. 与行业标准的符合程度
 
-需要润色的内容：
-\"\"\"{content}\"\"\"
-
-请按以下格式提供建议：
-- 主要问题分析
-- 具体改进建议
-- 优化后的示例内容
-"""
-            result = llm_model(prompt)
-            st.chat_message("Resumix").write(result)
-            st.markdown("---")
+def polish_card(text: str, llm_model: Callable):
+    """Legacy function wrapper for backward compatibility"""
+    logger.info("Handling Resume Polishing with provided resume text.")
+    card = PolishCard()
+    card.render()
+    card.render_polishing(text, llm_model)
