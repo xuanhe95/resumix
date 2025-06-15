@@ -12,7 +12,6 @@ from resumix.job_parser.resume_parser import ResumeParser
 from resumix.utils.logger import logger
 
 
-
 def display_score_card(section_name: str, scores: dict):
     """
     Display a score card for a resume section, including a radar chart,
@@ -59,3 +58,36 @@ def display_score_card(section_name: str, scores: dict):
     with col2:
         st.dataframe(df.set_index("Dimension"), use_container_width=True, height=180)
         st.markdown(f"📝 **Comment:** {comment}")
+
+
+def analyze_resume_with_scores(
+    sections: Dict[str, dict],
+    jd_content: str,
+    llm_model,
+    use_card_template: bool = False,
+):
+    """Analyze resume with scoring system"""
+    logger.info("Analyzing resume with scoring system")
+
+    # Example scoring logic - replace with your actual implementation
+    sample_scores = {
+        "完整性": 8,
+        "清晰度": 7,
+        "匹配度": 6 if jd_content else 5,
+        "表达专业性": 8,
+        "成就导向": 7,
+        "数据支撑": 5,
+        "评语": "简历整体良好，但可增加更多量化成果",
+    }
+
+    if use_card_template:
+        for section_name, section_content in sections.items():
+            display_score_card(section_name, sample_scores)
+    else:
+        # Original non-card display
+        st.header("📊 简历评分分析")
+        for section_name, section_content in sections.items():
+            st.subheader(section_name)
+            st.json(sample_scores)
+            st.markdown(f"**评语:** {sample_scores['评语']}")
+            st.divider()

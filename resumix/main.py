@@ -1,4 +1,4 @@
-#from paddleocr import PaddleOCR
+# from paddleocr import PaddleOCR
 import streamlit as st
 import sys
 import os
@@ -13,14 +13,14 @@ from config.config import Config
 from streamlit_option_menu import option_menu
 
 # Import card components
-from components.cards.analysis_card import analysis_card
-from components.cards.polish_card import polish_card
-from components.cards.agent_card import agent_card
-from components.cards.score_card import (
+from resumix.components.cards.analysis_card import analysis_card
+from resumix.components.cards.polish_card import polish_card
+from resumix.components.cards.agent_card import agent_card
+from resumix.components.cards.score_card import (
     display_score_card,
-    analyze_resume_with_scores
+    analyze_resume_with_scores,
 )
-from components.cards.compare_card import compare_resume_sections
+from resumix.components.cards.compare_card import compare_resume_sections
 
 # Import utilities
 from utils.ocr_utils import OCRUtils
@@ -166,41 +166,28 @@ if uploaded_file:
     # Tab routing with card components
     with st.container():
         if selected_tab == tab_names[0]:  # Analysis
-            analysis_card(
-                text=text,
-                show_scores=True,
-                show_analysis=True
-            )
-            
+            analysis_card(text=text, show_scores=True, show_analysis=True)
+
         elif selected_tab == tab_names[1]:  # Polish
-            polish_card(
-                text=text,
-                llm_model=llm_model,
-                show_scores=False
-            )
-            
+            polish_card(text=text, llm_model=llm_model, show_scores=False)
+
         elif selected_tab == tab_names[2]:  # Agent
-            agent_card(
-                text=text,
-                jd_content=jd_content,
-                agent=agent,
-                show_scores=True
-            )
-            
+            agent_card(text=text, jd_content=jd_content, agent=agent, show_scores=True)
+
         elif selected_tab == tab_names[3]:  # Score
             analyze_resume_with_scores(
                 sections=STRUCTED_SECTIONS,
                 jd_content=jd_content,
                 llm_model=llm_model,
-                use_card_template=True
+                use_card_template=True,
             )
-            
+
         elif selected_tab == tab_names[4]:  # Compare
             compare_resume_sections(
                 sections=STRUCTED_SECTIONS,
                 jd_content=jd_content,
                 rewriter=RESUME_REWRITER,
-                use_card_template=True
+                use_card_template=True,
             )
 else:
     st.info(T["please_upload"])
