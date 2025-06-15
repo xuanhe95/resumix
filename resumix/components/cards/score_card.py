@@ -11,6 +11,75 @@ from resumix.components.cards.display_card import display_card  # Updated import
 from resumix.job_parser.resume_parser import ResumeParser
 from resumix.utils.logger import logger
 
+from resumix.components.cards.base_card import BaseCard
+from typing import Optional, List
+from resumix.section.section_base import SectionBase
+from resumix.rewriter.resume_rewriter import ResumeRewriter
+
+# file: components/cards/score_card.py
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+from resumix.components.cards.base_card import BaseCard
+
+
+class ScoreCard(BaseCard):
+    def __init__(self, section_name: str, scores: dict):
+        title = f"Score for {section_name}"
+        icon = "📊"
+        comment = scores.get("Comment") or scores.get("评语") or "No comment provided."
+        super().__init__(title=title, icon=icon, comment=comment)
+
+        # 只保留可量化的得分项（剔除评语等）
+        self.score_items = {
+            k: v for k, v in scores.items() if isinstance(v, (int, float))
+        }
+        self.section_name = section_name
+
+    def render_radar_chart(self):
+        labels = list(self.score_items.keys())
+        values = list(self.score_items.values())
+
+        values += values[:1]  # 闭合雷达图
+        angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+        angles += angles[:1]
+
+        fig, ax = plt.subplots(figsize=(3.5, 3.5), subplot_kw=dict(polar=True))
+        ax.plot(angles, values, linewidth=2)
+        ax.fill(angles, values, alpha=0.25)
+        ax.set_thetagrids([angle * 180 / np.pi for angle in angles[:-1]], labels)
+        ax.set_ylim(0, 10)
+        st.pyplot(fig, clear_figure=True)
+
+    def render_table(self):
+        df = pd.DataFrame(
+            {
+                "Dimension": list(self.score_items.keys()),
+                "Score": list(self.score_items.values()),
+            }
+        )
+        st.dataframe(df.set_index("Dimension"), use_container_width=True, height=180)
+
+    def render(self):
+        logger.info(
+            f"Displaying scores for section: {self.section_name} - {self.score_items}"
+        )
+        self.render_header()
+
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            self.render_radar_chart()
+        with col2:
+            self.render_table()
+            self.render_comment()
+
+        self.render_additional()
+
+    def render_comment(self):
+        if self.comment:
+            st.markdown(f"📝 **Comment:** {self.comment}")
+
 
 def display_score_card(section_name: str, scores: dict):
     """

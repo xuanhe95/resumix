@@ -6,7 +6,7 @@ import matplotlib
 from loguru import logger
 
 
-def display_card(
+def display_score_card(
     title: str,
     icon: str,
     scores: Dict[str, float],
@@ -26,7 +26,7 @@ def display_card(
         dimensions: Custom dimension names (default uses standard 6 dimensions)
     """
     # Set Chinese font
-    # matplotlib.rcParams["font.family"] = "PingFang SC"
+    matplotlib.rcParams["font.family"] = "PingFang SC"
     matplotlib.rcParams["axes.unicode_minus"] = False
 
     logger.info(f"Displaying card: {title}")

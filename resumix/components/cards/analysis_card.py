@@ -2,7 +2,7 @@
 import streamlit as st
 from job_parser.resume_parser import ResumeParser
 from utils.logger import logger
-from .display_card import display_card  # Import the shared template
+from resumix.components.cards.display_card import display_card
 
 
 def analysis_card(text: str, show_analysis: bool = True, show_scores: bool = False):

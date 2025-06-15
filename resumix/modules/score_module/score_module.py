@@ -37,6 +37,9 @@ class ScoreModule:
 
         response = self.llm(prompt=prompt)
 
+        logger.debug(f"Score prompt: {prompt}")
+        logger.debug(f"Score response: {response}")
+
         try:
             result = JsonParser.parse(response)
             assert isinstance(result, dict)

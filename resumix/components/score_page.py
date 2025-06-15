@@ -1,10 +1,10 @@
 import streamlit as st
 from utils.logger import logger
-from components.cards.score_card import display_score_card
 from typing import Dict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from resumix.section.section_base import SectionBase
 from resumix.modules.score_module.score_module import ScoreModule
+from resumix.components.cards.score_card import ScoreCard
 
 
 def analyze_resume_with_scores(
@@ -15,9 +15,8 @@ def analyze_resume_with_scores(
     score_module = ScoreModule()
 
     if "requirements_basic" not in jd_sections:
-        st.warning(
-            "❗岗位描述缺少关键字段（requirements_basic / requirements_preferred），无法进行评分分析。"
-        )
+        st.warning("❗岗位描述缺少关键字段（requirements_basic），无法进行评分分析。")
+        logger.warning(f"Missing Requirements Basic in JD Sections: {jd_sections}")
         return
 
     section_items = list(sections.items())
@@ -47,7 +46,8 @@ def analyze_resume_with_scores(
             # 立即展示（可能无序）
             section = sections[name]
             with st.spinner(f"正在展示 {section.name}..."):
-                display_score_card(section.name, result)
+                score_card = ScoreCard(section.name, result)
+                score_card.render()
                 st.markdown("---")
 
             finished += 1

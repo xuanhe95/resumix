@@ -1,6 +1,5 @@
 from utils.ocr_utils import OCRUtils
 import streamlit as st
-from job_parser.jd_parser import JDParser
 from paddleocr import PaddleOCR
 from resumix.section_parser.vector_parser import VectorParser
 from resumix.section_parser.jd_vector_parser import JDVectorParser
@@ -35,9 +34,8 @@ def extract_text_from_pdf(file):
 
 
 def extract_job_description(jd_url):
-    jd_parser = JDParser(LLMClient())
-    jd_content = jd_parser.parse_from_url(jd_url)
-    st.chat_message("Job Description").write(jd_content)
+    jd_parser = JDVectorParser()
+    jd_content = jd_parser.parse(jd_url)
     return jd_content
 
 
@@ -71,6 +69,8 @@ class SessionUtils:
             logger.info(f"Update JD URL to {url}")
             st.session_state.jd_content = extract_job_description(url)
             st.session_state.jd_cached_url = url  # 更新缓存 URL
+        else:
+            logger.info("Load JD from cache.")
 
         return st.session_state.jd_content
 

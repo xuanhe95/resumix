@@ -1,5 +1,10 @@
 # from paddleocr import PaddleOCR
 import streamlit as st
+
+# Initialize session state
+if "lang" not in st.session_state:
+    st.session_state.lang = "en"
+
 import sys
 import os
 from pathlib import Path
@@ -18,7 +23,6 @@ from resumix.components.cards.polish_card import polish_card
 from resumix.components.cards.agent_card import agent_card
 from resumix.components.cards.score_card import (
     display_score_card,
-    analyze_resume_with_scores,
 )
 from resumix.components.cards.compare_card import compare_resume_sections
 
@@ -32,15 +36,15 @@ from utils.i18n import LANGUAGES
 from job_parser.resume_rewriter import ResumeRewriter
 from job_parser.jd_parser import JDParser
 from tool.tool import tool_list
+from resumix.utils.logger import logger
+from resumix.components.score_page import analyze_resume_with_scores
+
 
 # Config setup
 CONFIG = Config().config
 CURRENT_DIR = Path(__file__).resolve().parent
 ASSET_DIR = CURRENT_DIR / "assets" / "logo.png"
 
-# Initialize session state
-if "lang" not in st.session_state:
-    st.session_state.lang = "en"
 
 T = LANGUAGES[st.session_state.lang]
 
@@ -166,20 +170,22 @@ if uploaded_file:
     # Tab routing with card components
     with st.container():
         if selected_tab == tab_names[0]:  # Analysis
+            pass
             analysis_card(text=text, show_scores=True, show_analysis=True)
 
         elif selected_tab == tab_names[1]:  # Polish
+            pass
             polish_card(text=text, llm_model=llm_model, show_scores=False)
 
         elif selected_tab == tab_names[2]:  # Agent
+            pass
             agent_card(text=text, jd_content=jd_content, agent=agent, show_scores=True)
 
         elif selected_tab == tab_names[3]:  # Score
+
             analyze_resume_with_scores(
                 sections=STRUCTED_SECTIONS,
-                jd_content=jd_content,
-                llm_model=llm_model,
-                use_card_template=True,
+                jd_sections=jd_content,
             )
 
         elif selected_tab == tab_names[4]:  # Compare
