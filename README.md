@@ -97,6 +97,6 @@ Persistent memory commands:
 ```bash
 memory_show
 memory_update {"tone":"concise","target_roles":["Backend Engineer"]}
-memory_update 不要改skills，必须保留: China Telecom AI Lab, Redis
+memory_update 不要改skills，必须保留: Company name, Redis
 memory_clear
 ```
