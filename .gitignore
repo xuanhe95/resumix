@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+.venv/
+venv/
+.env
+.env.*
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Private
+pdf/
+records/

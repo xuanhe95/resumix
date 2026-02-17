@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "user_id": "default",
+  "profile": {
+    "target_roles": [],
+    "tone": "concise",
+    "must_keep_facts": [],
+    "forbidden_patterns": [],
+    "preferred_skills": [],
+    "section_policies": {
+      "personal_info": "passthrough",
+      "education": "passthrough",
+      "skills": "passthrough",
+      "experience": "rewrite",
+      "projects": "rewrite"
+    }
+  },
+  "stats": {
+    "memory_updates": 0,
+    "last_feedbacks": []
+  },
+  "updated_at": ""
+}
